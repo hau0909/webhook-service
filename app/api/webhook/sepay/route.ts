@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { getBookingHostBankAccount } from "@/src/service/getBookingHostBankAccount";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -9,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     console.log("Webhook:", body);
 
-    const bookingId = content?.split("_")[1];
+    const bookingId = content?.split("@")[1];
 
     if (!bookingId) {
       return NextResponse.json({ error: "Invalid content" }, { status: 400 });
@@ -26,23 +27,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // ❗ validate
-    if (booking.bank_account !== account_number) {
-      return NextResponse.json({ error: "Wrong account" }, { status: 400 });
+    // ❗ validate bank account
+    const hostAccount = await getBookingHostBankAccount(bookingId);
+
+    if (hostAccount?.account_number !== account_number) {
+      return NextResponse.json(
+        { error: "Wrong account: This bank account does not belong to the host" },
+        { status: 400 },
+      );
     }
 
-    if (Number(amount) !== booking.amount) {
+    if (Number(amount) !== booking.total_price) {
       return NextResponse.json({ error: "Wrong amount" }, { status: 400 });
     }
 
-    if (booking.status === "paid") {
+    if (booking.payment_status === "PAID") {
       return NextResponse.json({ message: "Already paid" });
     }
 
     // ✅ update
     await supabase
       .from("bookings")
-      .update({ payment_status: "paid" })
+      .update({ payment_status: "PAID" })
       .eq("id", bookingId);
 
     return NextResponse.json({ success: true });

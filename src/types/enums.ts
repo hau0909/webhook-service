@@ -1,0 +1,30 @@
+export type UserRole = "USER" | "ADMIN";
+
+export type ListingType = "HOME" | "EXPERIENCE";
+
+export type ListingStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "ACTIVE"
+  | "HIDDEN"
+  | "REJECTED"
+  | "BANNED";
+
+export type BookingStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "CONFIRMED"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export type ProfileStatus = "active" | "banned";
+
+export type PaymentStatus = "UNPAID" | "PAID" | "REFUNDED";
+
+export type AmenityType = "HOME" | "EXP" | "BOTH";
+
+export type requestHostStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "resubmit";
