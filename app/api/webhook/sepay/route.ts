@@ -1,19 +1,21 @@
 import { supabase } from "@/lib/supabase";
 import { getBookingHostBankAccount } from "@/src/service/getBookingHostBankAccount";
+import { extractBookingId } from "@/src/utils/extractBookingId";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const { amount, content, account_number } = body;
+    const { transferAmount, content, accountNumber } = body;
 
     console.log("Webhook:", body);
-
-    const bookingId = content?.split("@")[1];
+    const bookingId = extractBookingId(content);
+    
+      console.log("bookingId", bookingId);
 
     if (!bookingId) {
-      return NextResponse.json({ error: "Invalid content" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid contentasdasd" }, { status: 400 });
     }
 
     // 🔥 lấy booking
@@ -30,14 +32,14 @@ export async function POST(req: NextRequest) {
     // ❗ validate bank account
     const hostAccount = await getBookingHostBankAccount(bookingId);
 
-    if (hostAccount?.account_number !== account_number) {
+    if (hostAccount?.account_number !== accountNumber) {
       return NextResponse.json(
         { error: "Wrong account: This bank account does not belong to the host" },
         { status: 400 },
       );
     }
 
-    if (Number(amount) !== booking.total_price) {
+    if (Number(transferAmount) !== booking.total_price) {
       return NextResponse.json({ error: "Wrong amount" }, { status: 400 });
     }
 
