@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (Number(transferAmount) !== booking.total_price) {
+    if (Number(transferAmount) !== booking.total_price * 25000) {
       return NextResponse.json({ error: "Wrong amount" }, { status: 400 });
     }
 
