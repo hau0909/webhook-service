@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { getBookingHostBankAccount } from "@/src/service/getBookingHostBankAccount";
 import { extractBookingId } from "@/src/utils/extractBookingId";
 import { NextRequest, NextResponse } from "next/server";
@@ -16,10 +17,16 @@ export async function POST(req: NextRequest) {
     console.log("Webhook received:", body);
 
     // 1. SaaS Plan Payment Logic (TXN-...)
-    const txnMatch = content?.match(/TXN-\d+-\d+/);
+    const txnMatch = content?.toUpperCase().match(/TXN\d+/);
     if (txnMatch) {
+      // Kết nối trực tiếp đến DB của SGCMP (dev) để cập nhật payment
+      const devSupabase = createClient(
+        "https://ieougmdyuhmvmmydqzar.supabase.co",
+        "sb_publishable_HbtN616iGdBLK6JaxS4jvA_dzFQxHBQ"
+      );
+
       const transactionCode = txnMatch[0];
-      const { data: payment } = await supabase
+      const { data: payment } = await devSupabase
         .from("payments")
         .select("*")
         .eq("transaction_code", transactionCode)
@@ -29,16 +36,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, message: "Payment not found" }, { status: 200 });
       }
 
+      if (payment.payment_status !== "pending") {
+        return NextResponse.json({ error: "Payment already processed or cancelled" }, { status: 400 });
+      }
+
       if (payment.payment_status === "pending" && transferAmount >= payment.amount) {
         // Mark payment as completed
         const paidAt = new Date().toISOString();
-        await supabase
+        await devSupabase
           .from("payments")
           .update({ payment_status: "completed", paid_at: paidAt })
           .eq("payment_id", payment.payment_id);
 
         // Get plan duration
-        const { data: plan } = await supabase
+        const { data: plan } = await devSupabase
           .from("plans")
           .select("duration_days")
           .eq("plan_id", payment.plan_id)
@@ -50,14 +61,14 @@ export async function POST(req: NextRequest) {
           endDate.setDate(startDate.getDate() + plan.duration_days);
 
           // Deactivate old active subscriptions for the same company
-          await supabase
+          await devSupabase
             .from("subscriptions")
             .update({ status: "unactive" })
             .eq("company_id", payment.company_id)
             .eq("status", "active");
 
           // Activate new subscription
-          await supabase
+          await devSupabase
             .from("subscriptions")
             .update({ 
               status: "active", 
@@ -74,6 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Booking Payment Logic (BK...)
+    /*
     const bookingId = extractBookingId(content);
     console.log("bookingId", bookingId);
 
@@ -127,6 +139,13 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
+    */
+
+    // Return error if no SaaS payment logic matched
+    return NextResponse.json(
+      { error: "Invalid content" },
+      { status: 400 },
+    );
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
