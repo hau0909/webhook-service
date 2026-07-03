@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get("Authorization");
     const expectedToken = process.env.SEPAY_WEBHOOK_TOKEN;
-    if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+    if (expectedToken && authHeader !== `Bearer ${expectedToken}` && authHeader !== `Apikey ${expectedToken}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
